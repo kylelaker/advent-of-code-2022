@@ -2,7 +2,13 @@ import middy from '@middy/core';
 import { Tracer, captureLambdaHandler } from '@aws-lambda-powertools/tracer';
 import { Logger, injectLambdaContext } from '@aws-lambda-powertools/logger';
 import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
-import { formatSolution, INVALID_INPUT, UNEXPECTED_ERROR } from './responses';
+import {
+  formatAsyncSolution,
+  formatError,
+  formatSolution,
+  INVALID_INPUT,
+  UNEXPECTED_ERROR,
+} from './responses';
 const tracer = new Tracer();
 const logger = new Logger();
 
@@ -13,7 +19,7 @@ export const middlewares = [
 
 export interface DailySolutionConstructor {
   // eslint-disable-next-line no-use-before-define
-  new (input: string): DailySolution;
+  new(input: string): DailySolution | AsyncDailySolution;
 }
 
 /**
@@ -49,6 +55,31 @@ export abstract class DailySolution {
   }
 }
 
+export abstract class AsyncDailySolution {
+  /**
+   * The input that was provided by the user.
+   */
+  public readonly rawInput: string;
+
+  constructor(input: string) {
+    this.rawInput = input;
+  }
+
+  /**
+   * The solution to the first part of the day's challenge.
+   */
+  public async part1Solution(): Promise<number | string | undefined> {
+    return undefined;
+  }
+
+  /**
+   * The solution to the second part of the day's challenge.
+   */
+  public async part2Solution(): Promise<number | string | undefined> {
+    return undefined;
+  }
+}
+
 /**
  * Wrap the daily solution in a function suitable to act as a Lambda function handler.
  *
@@ -66,11 +97,29 @@ export function handlerBase(Solver: DailySolutionConstructor): APIGatewayProxyHa
     }
     try {
       const solver = new Solver(event.body);
+      if (solver instanceof DailySolution) {
+        return {
+          statusCode: 200,
+          body: JSON.stringify(
+            formatSolution(solver.rawInput, solver.part1Solution, solver.part2Solution)
+          ),
+        };
+      }
+      if (solver instanceof AsyncDailySolution) {
+        return {
+          statusCode: 200,
+          body: JSON.stringify(
+            await formatAsyncSolution(
+              solver.rawInput,
+              solver.part1Solution(),
+              solver.part2Solution()
+            )
+          ),
+        };
+      }
       return {
-        statusCode: 200,
-        body: JSON.stringify(
-          formatSolution(solver.rawInput, solver.part1Solution, solver.part2Solution)
-        ),
+        statusCode: 500,
+        body: JSON.stringify(formatError('Internal error')),
       };
     } catch (err) {
       logger.error('Unexpected error in solution', err as Error);

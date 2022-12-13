@@ -23,6 +23,23 @@ export const UNEXPECTED_ERROR = formatError(
   'An unexpected error occurred while calculating the solution'
 );
 
+export async function formatAsyncSolution(
+  input: string,
+  part1: Promise<number | string | undefined>,
+  part2: Promise<number | string | undefined>
+): Promise<SuccessResponse> {
+  const p1 = await part1;
+  const p2 = await part2;
+  return {
+    type: 'Solution',
+    input,
+    solution: {
+      part1: p1,
+      part2: p2,
+    },
+  };
+}
+
 export function formatSolution(
   input: string,
   part1?: number | string,

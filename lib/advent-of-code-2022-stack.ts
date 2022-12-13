@@ -32,12 +32,15 @@ export class AdventOfCode2022Stack extends cdk.Stack {
       { day: 9, name: 'Rope Bridge' },
       { day: 10, name: 'Cathode-Ray Tube' },
       { day: 11, name: 'Monkey in the Middle' },
+      { day: 12, name: 'Hill Climbing Algorithm', timeout: cdk.Duration.seconds(30), memory: 2048 },
     ];
     supportedDays.map(
-      ({ day, name }) =>
+      ({ day, name, timeout, memory }) =>
         new AdventOfCodeDay(this, `Day${day}`, {
           day,
           name,
+          timeout,
+          memory,
           api: httpApi,
         })
     );
